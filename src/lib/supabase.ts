@@ -101,34 +101,23 @@ export async function createTask(task: Partial<Task>) {
   console.log('Creating task in Supabase:', task);
   
   try {
-    // First, get the Supabase UUID for this Clerk user
-    const clerkId = task.user_id;
-    console.log('Looking up Supabase UUID for Clerk ID:', clerkId);
+    // Get the current authenticated user from Supabase
+    const { data: authData } = await supabase.auth.getUser();
     
-    const { data: userData, error: userError } = await supabase
-      .from('users')
-      .select('id')
-      .eq('clerk_id', clerkId)
-      .single();
-    
-    if (userError) {
-      console.error('Error finding user in Supabase:', userError);
-      throw new Error(`User lookup error: ${userError.message || 'Could not find user in database'}`);
+    if (!authData?.user) {
+      console.error('No authenticated user found in Supabase');
+      throw new Error('You must be authenticated with Supabase to create tasks. Please sign out and sign in again.');
     }
     
-    if (!userData) {
-      console.error('No user found with Clerk ID:', clerkId);
-      throw new Error('User not found in database. Please try signing out and back in.');
-    }
-    
-    console.log('Found Supabase user:', userData);
+    console.log('Current Supabase auth user:', authData.user);
     
     // Make sure we're not sending any unwanted properties
     const cleanTask = {
       title: task.title,
       completed: task.completed || false,
       important: task.important || false,
-      user_id: userData.id, // Use the Supabase UUID instead of Clerk ID
+      // Use the Supabase auth user ID instead of Clerk ID
+      user_id: authData.user.id,
       list_id: task.list_id || null,
       due_date: task.due_date || null
     };
