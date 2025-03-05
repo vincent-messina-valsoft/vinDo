@@ -6,7 +6,7 @@ import LandingPage from './pages/LandingPage';
 import MyDayView from './pages/MyDayView';
 import ImportantView from './pages/ImportantView';
 import NewListView from './pages/NewListView';
-import { syncUserWithSupabase } from './lib/supabase';
+import { syncUserWithSupabase, supabase } from './lib/supabase';
 
 function App() {
   const { isLoaded, isSignedIn, user } = useUser();
@@ -14,18 +14,35 @@ function App() {
   useEffect(() => {
     // When user signs in, sync their data with Supabase
     if (isLoaded && isSignedIn && user) {
-      const syncUser = async () => {
+      console.log('User signed in with Clerk:', user.id);
+      
+      // Initialize Supabase auth for this user
+      const setupAuth = async () => {
         try {
+          // This is a workaround - in a real app you'd have a proper authentication flow
+          // For this demo, we're setting the token directly using Clerk's ID
+          await supabase.auth.signInWithPassword({
+            email: user.primaryEmailAddress?.emailAddress || 'user@example.com',
+            password: user.id // Using user ID as password for simplicity
+          });
+          
+          console.log('Authenticated with Supabase');
+          
+          // After auth setup, sync the user data
           await syncUserWithSupabase(
             user.id,
             user.primaryEmailAddress?.emailAddress || ''
           );
         } catch (error) {
-          console.error('Error syncing user with Supabase:', error);
+          console.error('Error setting up Supabase auth:', error);
         }
       };
       
-      syncUser();
+      setupAuth();
+    } else if (isLoaded && !isSignedIn) {
+      console.log('User is not signed in');
+      // Sign out from Supabase as well
+      supabase.auth.signOut();
     }
   }, [isLoaded, isSignedIn, user]);
 

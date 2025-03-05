@@ -101,23 +101,39 @@ export async function createTask(task: Partial<Task>) {
   console.log('Creating task in Supabase:', task);
   
   try {
+    // Make sure we're not sending any unwanted properties
+    const cleanTask = {
+      title: task.title,
+      completed: task.completed || false,
+      important: task.important || false,
+      user_id: task.user_id,
+      list_id: task.list_id || null,
+      due_date: task.due_date || null
+    };
+    
+    console.log('Clean task data:', cleanTask);
+    
     // Regular insert without setting session
     const { data, error } = await supabase
       .from('tasks')
-      .insert([task])
+      .insert([cleanTask])
       .select()
       .single();
 
     if (error) {
       console.error('Supabase error creating task:', error);
-      throw error;
+      throw new Error(`Supabase error: ${error.message || error.details || 'Unknown database error'}`);
     }
     
     console.log('Task created successfully:', data);
     return data as Task;
   } catch (error) {
     console.error('Exception creating task:', error);
-    throw error;
+    if (error instanceof Error) {
+      throw error; // Re-throw the error with its message
+    } else {
+      throw new Error('Unknown error occurred while creating task');
+    }
   }
 }
 
@@ -156,12 +172,28 @@ export async function searchTasks(query: string) {
 // Function to ensure Clerk user exists in Supabase
 export async function syncUserWithSupabase(clerkUserId: string, email: string) {
   try {
-    // Attempt to create a user in Supabase auth if needed
-    // This API call would typically be made from your backend
-    // Since we're using Supabase's RLS (Row Level Security), we need to have
-    // a user in Supabase that matches the Clerk user ID for permissions
+    console.log('Syncing user with Supabase:', clerkUserId, email);
     
-    // Check if this user already exists in a users table (if you have one)
+    // Try to create user in Supabase auth (if it doesn't exist already)
+    try {
+      const { data: authData, error: authError } = await supabase.auth.admin.createUser({
+        email: email,
+        password: clerkUserId, // Using clerk ID as password for simplicity
+        email_confirm: true,
+        user_metadata: { clerk_id: clerkUserId }
+      });
+      
+      if (authError) {
+        // User likely already exists, which is fine
+        console.log('User already exists in Supabase auth or creation failed:', authError.message);
+      } else {
+        console.log('Created user in Supabase auth:', authData);
+      }
+    } catch (authCreateError) {
+      console.error('Error in auth user creation (can be ignored if user exists):', authCreateError);
+    }
+    
+    // Now check if this user already exists in a users table
     const { data, error } = await supabase
       .from('users')
       .select('*')
@@ -191,6 +223,8 @@ export async function syncUserWithSupabase(clerkUserId: string, email: string) {
       }
       
       console.log('User synced with Supabase successfully');
+    } else {
+      console.log('User already exists in Supabase users table:', data);
     }
     
     return true;

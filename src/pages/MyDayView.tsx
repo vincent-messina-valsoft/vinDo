@@ -43,6 +43,7 @@ export default function MyDayView() {
     
     if (!isSignedIn || !user) {
       console.log('User not signed in:', { isSignedIn, userId: user?.id });
+      alert('You must be signed in to create tasks');
       return;
     }
 
@@ -66,10 +67,11 @@ export default function MyDayView() {
       // Clear the input field
       setNewTask('');
       
-      console.log('Updated tasks:', tasks);
+      console.log('Updated tasks array');
     } catch (error) {
       console.error('Error adding task:', error);
-      alert('Failed to create task: ' + (error instanceof Error ? error.message : 'Unknown error'));
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      alert(`Failed to create task: ${errorMessage}`);
     }
   };
 
@@ -190,7 +192,10 @@ export default function MyDayView() {
         ))}
 
         {/* Add Task Input */}
-        <form onSubmit={handleAddTask} className="mt-2">
+        <form 
+          onSubmit={handleAddTask} 
+          className="mt-2"
+        >
           <div className="flex items-center gap-3 bg-white/10 backdrop-blur-lg rounded-lg px-4 py-3">
             <button 
               type="submit" 
@@ -204,6 +209,12 @@ export default function MyDayView() {
               value={newTask}
               onChange={(e) => setNewTask(e.target.value)}
               onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  handleAddTask(e);
+                }
+              }}
+              onKeyPress={(e) => {
                 if (e.key === 'Enter') {
                   e.preventDefault();
                   handleAddTask(e);

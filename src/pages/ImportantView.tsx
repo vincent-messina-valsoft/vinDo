@@ -35,43 +35,35 @@ export default function ImportantView() {
 
   const handleAddTask = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('Form submitted in ImportantView, new task:', newTask);
+    if (!newTask.trim()) return;
     
-    if (!newTask.trim()) {
-      console.log('Task text is empty, not creating task');
-      return;
-    }
-    
-    if (!isSignedIn || !user) {
-      console.log('User not signed in:', { isSignedIn, userId: user?.id });
+    // Check if user is signed in
+    if (!user) {
+      alert("Please sign in to create tasks");
+      console.log("User not signed in, cannot create task");
       return;
     }
 
+    console.log("Creating task with user ID:", user.id);
+    
     try {
-      console.log('Attempting to create important task...', user.id);
-      const taskData = {
+      const task = {
         title: newTask,
         completed: false,
         important: true,
         user_id: user.id,
-        list_id: null
       };
-      console.log('Task data:', taskData);
       
-      const createdTask = await createTask(taskData);
-      console.log('Important task created successfully:', createdTask);
+      const createdTask = await createTask(task);
+      console.log("Task created:", createdTask);
       
-      // Update local state with the new task
-      setTasks(prevTasks => [createdTask, ...prevTasks]);
-      
-      // Clear the input field and hide input
-      setNewTask('');
+      setTasks([createdTask, ...tasks]);
+      console.log("Updated tasks array:", [createdTask, ...tasks]);
+      setNewTask("");
       setShowInput(false);
-      
-      console.log('Updated tasks:', tasks);
     } catch (error) {
-      console.error('Error adding task:', error);
-      alert('Failed to create task: ' + (error instanceof Error ? error.message : 'Unknown error'));
+      console.error("Error creating task:", error);
+      alert(`Failed to create task: ${error instanceof Error ? error.message : "Unknown error"}`);
     }
   };
 
