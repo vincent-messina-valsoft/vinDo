@@ -101,12 +101,34 @@ export async function createTask(task: Partial<Task>) {
   console.log('Creating task in Supabase:', task);
   
   try {
+    // First, get the Supabase UUID for this Clerk user
+    const clerkId = task.user_id;
+    console.log('Looking up Supabase UUID for Clerk ID:', clerkId);
+    
+    const { data: userData, error: userError } = await supabase
+      .from('users')
+      .select('id')
+      .eq('clerk_id', clerkId)
+      .single();
+    
+    if (userError) {
+      console.error('Error finding user in Supabase:', userError);
+      throw new Error(`User lookup error: ${userError.message || 'Could not find user in database'}`);
+    }
+    
+    if (!userData) {
+      console.error('No user found with Clerk ID:', clerkId);
+      throw new Error('User not found in database. Please try signing out and back in.');
+    }
+    
+    console.log('Found Supabase user:', userData);
+    
     // Make sure we're not sending any unwanted properties
     const cleanTask = {
       title: task.title,
       completed: task.completed || false,
       important: task.important || false,
-      user_id: task.user_id,
+      user_id: userData.id, // Use the Supabase UUID instead of Clerk ID
       list_id: task.list_id || null,
       due_date: task.due_date || null
     };
